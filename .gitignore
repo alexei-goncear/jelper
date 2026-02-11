@@ -5,3 +5,5 @@
 /.vs
 /Jelper/bin
 /Jelper/obj
+*.user
+/Jelper/Jelper.csproj.user

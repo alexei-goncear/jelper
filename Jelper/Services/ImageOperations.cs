@@ -13,13 +13,13 @@ internal sealed class ImageOperations
         var files = GetFiles("*.webp");
         if (files.Count == 0)
         {
-            Console.WriteLine("No WEBP files were found in the current folder.");
+            Console.WriteLine("No WEBP files were found in /images.");
             return;
         }
 
         var converted = 0;
         var total = files.Count;
-        Console.WriteLine($"Found {total} WEBP file(s). Starting conversion...");
+        Console.WriteLine($"Found {total} WEBP file(s) in /images. Starting conversion...");
 
         for (var index = 0; index < total; index++)
         {
@@ -51,12 +51,12 @@ internal sealed class ImageOperations
         var files = GetFiles("*.png");
         if (files.Count == 0)
         {
-            Console.WriteLine("No PNG files were found in the current folder.");
+            Console.WriteLine("No PNG files were found in /images.");
             return;
         }
 
         var total = files.Count;
-        Console.WriteLine($"Found {total} PNG file(s). Removing watermark...");
+        Console.WriteLine($"Found {total} PNG file(s) in /images. Removing watermark...");
 
         for (var index = 0; index < total; index++)
         {
@@ -105,12 +105,12 @@ internal sealed class ImageOperations
         var files = GetFiles("*.png");
         if (files.Count == 0)
         {
-            Console.WriteLine("No PNG files were found in the current folder.");
+            Console.WriteLine("No PNG files were found in /images.");
             return;
         }
 
         var total = files.Count;
-        Console.WriteLine($"Found {total} PNG file(s). Resizing...");
+        Console.WriteLine($"Found {total} PNG file(s) in /images. Resizing...");
 
         for (var index = 0; index < total; index++)
         {
@@ -141,13 +141,21 @@ internal sealed class ImageOperations
 
     private static List<string> GetFiles(string searchPattern)
     {
-        var currentDirectory = Directory.GetCurrentDirectory();
-        return Directory.EnumerateFiles(currentDirectory, searchPattern, SearchOption.TopDirectoryOnly)
+        var imagesDirectory = GetImagesDirectory();
+        return Directory.EnumerateFiles(imagesDirectory, searchPattern, SearchOption.TopDirectoryOnly)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
     private static string FormatProgress(int current, int total) => $"[{current}/{total}]";
+
+    private static string GetImagesDirectory()
+    {
+        var currentDirectory = Directory.GetCurrentDirectory();
+        var imagesDirectory = Path.Combine(currentDirectory, "images");
+        Directory.CreateDirectory(imagesDirectory);
+        return imagesDirectory;
+    }
 
     private static string AppendOperationSuffix(string path, string operation)
     {
