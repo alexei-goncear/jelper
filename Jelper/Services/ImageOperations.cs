@@ -25,7 +25,7 @@ internal sealed class ImageOperations
         for (var index = 0; index < total; index++)
         {
             var file = files[index];
-            var destinationPath = AppendOperationSuffix(Path.ChangeExtension(file, ".png"), "converted");
+            var destinationPath = Path.ChangeExtension(file, ".png");
             var progress = FormatProgress(index + 1, total);
             var fileName = Path.GetFileName(file);
 
@@ -35,6 +35,12 @@ internal sealed class ImageOperations
                 using var image = new MagickImage(file);
                 image.Write(destinationPath, MagickFormat.Png);
                 converted++;
+
+                if (!file.Equals(destinationPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    TryDeleteSource(file, progress);
+                }
+
                 var action = existed ? "Updated" : "Created";
                 Console.WriteLine($"{progress} {action} {Path.GetFileName(destinationPath)} from {fileName}.");
             }
@@ -87,11 +93,10 @@ internal sealed class ImageOperations
                     IgnoreAspectRatio = false
                 };
 
-                var destinationPath = AppendOperationSuffix(file, "trimmed");
                 image.Crop(geometry);
-                var format = GetFormatForPath(destinationPath);
-                image.Write(destinationPath, format);
-                Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} (trimmed {pixelsToRemove}px).");
+                var format = GetFormatForPath(file);
+                image.Write(file, format);
+                Console.WriteLine($"{progress} Updated {fileName} (trimmed {pixelsToRemove}px).");
             }
             catch (Exception ex)
             {
@@ -127,11 +132,10 @@ internal sealed class ImageOperations
                 {
                     IgnoreAspectRatio = true
                 };
-                var destinationPath = AppendOperationSuffix(file, "resized");
                 image.Resize(geometry);
-                var format = GetFormatForPath(destinationPath);
-                image.Write(destinationPath, format);
-                Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} ({targetWidth}x{targetHeight}).");
+                var format = GetFormatForPath(file);
+                image.Write(file, format);
+                Console.WriteLine($"{progress} Updated {fileName} ({targetWidth}x{targetHeight}).");
             }
             catch (Exception ex)
             {
@@ -194,10 +198,9 @@ internal sealed class ImageOperations
                     var offsetY = Math.Max(0, image.Height - preparedWatermark.Height);
                     image.Composite(preparedWatermark, offsetX, offsetY, CompositeOperator.Over);
 
-                    var destinationPath = AppendOperationSuffix(file, "watermarked");
-                    var format = GetFormatForPath(destinationPath);
-                    image.Write(destinationPath, format);
-                    Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} ({targetWidth}x{targetHeight}, watermark: {watermarkFileName}).");
+                    var format = GetFormatForPath(file);
+                    image.Write(file, format);
+                    Console.WriteLine($"{progress} Updated {fileName} ({targetWidth}x{targetHeight}, watermark: {watermarkFileName}).");
                 }
                 catch (Exception ex)
                 {
@@ -270,12 +273,16 @@ internal sealed class ImageOperations
         return imagesDirectory;
     }
 
-    private static string AppendOperationSuffix(string path, string operation)
+    private static void TryDeleteSource(string sourcePath, string progress)
     {
-        var directory = Path.GetDirectoryName(path) ?? string.Empty;
-        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(path);
-        var extension = Path.GetExtension(path);
-        var newName = $"{fileNameWithoutExtension}_{operation}{extension}";
-        return Path.Combine(directory, newName);
+        try
+        {
+            File.Delete(sourcePath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"{progress} Converted but failed to delete original {Path.GetFileName(sourcePath)}: {ex.Message}");
+        }
     }
+
 }
