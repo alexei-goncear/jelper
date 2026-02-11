@@ -18,8 +18,7 @@ internal sealed class InteractiveShell
 
     public void Run()
     {
-        Console.WriteLine("Interactive file helper ready. Close the window manually when finished.");
-        Console.WriteLine($"Type '{_input.ExitKeyword}' at any prompt to return to the command legend.");
+        Console.WriteLine($"Jelper ready. Type '{_input.ExitKeyword}' anywhere to cancel.");
 
         while (true)
         {
@@ -30,16 +29,16 @@ internal sealed class InteractiveShell
                 var command = ReadCommandSelection();
                 command.Describe();
                 command.Execute();
-                Console.WriteLine("Action complete. Returning to the legend.");
+                Console.WriteLine("Done. Back to the legend.");
             }
             catch (UserExitRequestedException)
             {
-                Console.WriteLine("Exit requested. Returning to the legend without running the command.");
+                Console.WriteLine("Canceled.");
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-                Console.Error.WriteLine("The console stays open. Please try again.");
+                Console.Error.WriteLine("Try again when ready.");
             }
         }
     }
@@ -47,28 +46,28 @@ internal sealed class InteractiveShell
     private void ShowLegend()
     {
         Console.WriteLine();
-        Console.WriteLine("================ COMMAND LEGEND ================");
+        Console.WriteLine("============= COMMANDS =============");
         foreach (var command in _commands)
         {
             Console.WriteLine($"{command.Key} - {command.Title,-17}: {command.Description}");
         }
 
-        Console.WriteLine($"Type the number or command name. Type '{_input.ExitKeyword}' at any prompt to return here.");
-        Console.WriteLine("================================================");
+        Console.WriteLine($"Type a number or name. '{_input.ExitKeyword}' returns here.");
+        Console.WriteLine("====================================");
     }
 
     private IConsoleCommand ReadCommandSelection()
     {
         while (true)
         {
-            var input = _input.ReadRequiredInput("Enter the command number or name from the legend:");
+            var input = _input.ReadRequiredInput("Choose a command");
             var command = _commands.FirstOrDefault(c => c.Matches(input));
             if (command is not null)
             {
                 return command;
             }
 
-            Console.WriteLine("Unknown command. Please choose one of the listed options.");
+            Console.WriteLine("Unknown command. Pick one from the list.");
         }
     }
 }

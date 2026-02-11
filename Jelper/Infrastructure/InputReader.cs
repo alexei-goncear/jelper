@@ -17,8 +17,7 @@ internal sealed class InputReader
     {
         while (true)
         {
-            Console.WriteLine(prompt);
-            Console.WriteLine($"(Type '{_exitKeyword}' to return to the command legend)");
+            Console.WriteLine($"{prompt} (or type '{_exitKeyword}' to cancel)");
             Console.Write("> ");
 
             var line = Console.ReadLine();
@@ -41,25 +40,6 @@ internal sealed class InputReader
             }
 
             return line;
-        }
-    }
-
-    public bool ReadYesNo(string prompt)
-    {
-        while (true)
-        {
-            var answer = ReadRequiredInput($"{prompt} (y/n)");
-            if (answer.Equals("y", StringComparison.OrdinalIgnoreCase) || answer.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (answer.Equals("n", StringComparison.OrdinalIgnoreCase) || answer.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            Console.WriteLine("Please type 'y' or 'n'.");
         }
     }
 

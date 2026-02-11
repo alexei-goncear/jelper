@@ -8,7 +8,7 @@ namespace Jelper.Services;
 
 internal sealed class ImageOperations
 {
-    public void ConvertWebpToPng(bool overwriteExisting)
+    public void ConvertWebpToPng()
     {
         var files = GetFiles("*.webp");
         if (files.Count == 0)
@@ -18,30 +18,24 @@ internal sealed class ImageOperations
         }
 
         var converted = 0;
-        var skipped = 0;
         var total = files.Count;
         Console.WriteLine($"Found {total} WEBP file(s). Starting conversion...");
 
         for (var index = 0; index < total; index++)
         {
             var file = files[index];
-            var destinationPath = Path.ChangeExtension(file, ".png");
+            var destinationPath = AppendOperationSuffix(Path.ChangeExtension(file, ".png"), "converted");
             var progress = FormatProgress(index + 1, total);
             var fileName = Path.GetFileName(file);
 
-            if (!overwriteExisting && File.Exists(destinationPath))
-            {
-                skipped++;
-                Console.WriteLine($"{progress} Skipped {Path.GetFileName(destinationPath)} (already exists).");
-                continue;
-            }
-
             try
             {
+                var existed = File.Exists(destinationPath);
                 using var image = new MagickImage(file);
                 image.Write(destinationPath, MagickFormat.Png);
                 converted++;
-                Console.WriteLine($"{progress} Created {Path.GetFileName(destinationPath)} from {fileName}.");
+                var action = existed ? "Updated" : "Created";
+                Console.WriteLine($"{progress} {action} {Path.GetFileName(destinationPath)} from {fileName}.");
             }
             catch (Exception ex)
             {
@@ -49,7 +43,7 @@ internal sealed class ImageOperations
             }
         }
 
-        Console.WriteLine($"webp2png finished. Converted {converted} of {total}, skipped {skipped}.");
+        Console.WriteLine($"webp2png finished. Converted {converted} of {total}.");
     }
 
     public void RemoveWatermark(int pixelsToRemove)
@@ -92,9 +86,10 @@ internal sealed class ImageOperations
                     IgnoreAspectRatio = false
                 };
 
+                var destinationPath = AppendOperationSuffix(file, "trimmed");
                 image.Crop(geometry);
-                image.Write(file, MagickFormat.Png);
-                Console.WriteLine($"{progress} Watermark removed from {fileName}.");
+                image.Write(destinationPath, MagickFormat.Png);
+                Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} (trimmed {pixelsToRemove}px).");
             }
             catch (Exception ex)
             {
@@ -126,9 +121,14 @@ internal sealed class ImageOperations
             try
             {
                 using var image = new MagickImage(file);
-                image.Resize(targetWidth, targetHeight);
-                image.Write(file, MagickFormat.Png);
-                Console.WriteLine($"{progress} Resized {fileName} to {targetWidth}x{targetHeight}.");
+                var geometry = new MagickGeometry(targetWidth, targetHeight)
+                {
+                    IgnoreAspectRatio = true
+                };
+                var destinationPath = AppendOperationSuffix(file, "resized");
+                image.Resize(geometry);
+                image.Write(destinationPath, MagickFormat.Png);
+                Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} ({targetWidth}x{targetHeight}).");
             }
             catch (Exception ex)
             {
@@ -148,4 +148,13 @@ internal sealed class ImageOperations
     }
 
     private static string FormatProgress(int current, int total) => $"[{current}/{total}]";
+
+    private static string AppendOperationSuffix(string path, string operation)
+    {
+        var directory = Path.GetDirectoryName(path) ?? string.Empty;
+        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(path);
+        var extension = Path.GetExtension(path);
+        var newName = $"{fileNameWithoutExtension}_{operation}{extension}";
+        return Path.Combine(directory, newName);
+    }
 }
