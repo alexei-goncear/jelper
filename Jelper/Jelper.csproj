@@ -13,4 +13,8 @@
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="13.6.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="images\watermarks\" />
+  </ItemGroup>
+
 </Project>
