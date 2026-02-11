@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Jelper": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
