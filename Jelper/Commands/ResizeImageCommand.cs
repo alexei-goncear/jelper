@@ -13,12 +13,12 @@ internal sealed class ResizeImageCommand : ConsoleCommandBase
 
     public override string Key => "3";
     public override string Title => "resize-image";
-    public override string Description => "Stretch every PNG to the exact size.";
+    public override string Description => "Stretch every PNG/JPG to the exact size.";
 
     public override void Describe()
     {
         Console.WriteLine();
-        Console.WriteLine("resize-image: force all PNGs to the size you enter.");
+        Console.WriteLine("resize-image: force all PNG/JPG files to the size you enter.");
     }
 
     public override void Execute()
@@ -26,7 +26,7 @@ internal sealed class ResizeImageCommand : ConsoleCommandBase
         Console.WriteLine("Enter target size (width first, then height).");
         var width = Input.ReadPositiveInt("Width in px (>= 1)", minimum: 1);
         var height = Input.ReadPositiveInt("Height in px (>= 1)", minimum: 1);
-        Console.WriteLine("Resizing PNG files...");
-        Operations.ResizePng(width, height);
+        Console.WriteLine("Resizing PNG/JPG files...");
+        Operations.ResizeImages(width, height);
     }
 }

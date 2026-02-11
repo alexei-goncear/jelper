@@ -13,19 +13,19 @@ internal sealed class DeleteWatermarkCommand : ConsoleCommandBase
 
     public override string Key => "2";
     public override string Title => "delete-watermark";
-    public override string Description => "Trim a bottom strip from PNGs.";
+    public override string Description => "Trim a bottom strip from PNGs/JPGs.";
 
     public override void Describe()
     {
         Console.WriteLine();
-        Console.WriteLine("delete-watermark: cut pixels from the bottom and keep the center.");
+        Console.WriteLine("delete-watermark: cut pixels from the bottom of PNG/JPG files and keep the center.");
     }
 
     public override void Execute()
     {
         Console.WriteLine("Pixels to trim from the bottom?");
         var pixels = Input.ReadPositiveInt("Pixels to remove (>= 1)", minimum: 1);
-        Console.WriteLine("Cropping PNG files...");
+        Console.WriteLine("Cropping PNG/JPG files...");
         Operations.RemoveWatermark(pixels);
     }
 }

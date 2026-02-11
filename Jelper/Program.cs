@@ -15,7 +15,8 @@ internal static class Program
         {
             new ConvertWebpCommand(inputReader, operations),
             new DeleteWatermarkCommand(inputReader, operations),
-            new ResizeImageCommand(inputReader, operations)
+            new ResizeImageCommand(inputReader, operations),
+            new AddWatermarkCommand(inputReader, operations)
         };
 
         var shell = new InteractiveShell(inputReader, commands);

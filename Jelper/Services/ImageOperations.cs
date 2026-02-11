@@ -8,6 +8,7 @@ namespace Jelper.Services;
 
 internal sealed class ImageOperations
 {
+    private static readonly string[] SupportedImagePatterns = { "*.png", "*.jpg", "*.jpeg" };
     public void ConvertWebpToPng()
     {
         var files = GetFiles("*.webp");
@@ -48,15 +49,15 @@ internal sealed class ImageOperations
 
     public void RemoveWatermark(int pixelsToRemove)
     {
-        var files = GetFiles("*.png");
+        var files = GetSupportedImageFiles();
         if (files.Count == 0)
         {
-            Console.WriteLine("No PNG files were found in /images.");
+            Console.WriteLine("No PNG/JPG files were found in /images.");
             return;
         }
 
         var total = files.Count;
-        Console.WriteLine($"Found {total} PNG file(s) in /images. Removing watermark...");
+        Console.WriteLine($"Found {total} PNG/JPG file(s) in /images. Removing watermark...");
 
         for (var index = 0; index < total; index++)
         {
@@ -88,7 +89,8 @@ internal sealed class ImageOperations
 
                 var destinationPath = AppendOperationSuffix(file, "trimmed");
                 image.Crop(geometry);
-                image.Write(destinationPath, MagickFormat.Png);
+                var format = GetFormatForPath(destinationPath);
+                image.Write(destinationPath, format);
                 Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} (trimmed {pixelsToRemove}px).");
             }
             catch (Exception ex)
@@ -97,20 +99,20 @@ internal sealed class ImageOperations
             }
         }
 
-        Console.WriteLine("Watermark removal finished for all PNG files.");
+        Console.WriteLine("Watermark removal finished for all PNG/JPG files.");
     }
 
-    public void ResizePng(int targetWidth, int targetHeight)
+    public void ResizeImages(int targetWidth, int targetHeight)
     {
-        var files = GetFiles("*.png");
+        var files = GetSupportedImageFiles();
         if (files.Count == 0)
         {
-            Console.WriteLine("No PNG files were found in /images.");
+            Console.WriteLine("No PNG/JPG files were found in /images.");
             return;
         }
 
         var total = files.Count;
-        Console.WriteLine($"Found {total} PNG file(s) in /images. Resizing...");
+        Console.WriteLine($"Found {total} PNG/JPG file(s) in /images. Resizing...");
 
         for (var index = 0; index < total; index++)
         {
@@ -127,7 +129,8 @@ internal sealed class ImageOperations
                 };
                 var destinationPath = AppendOperationSuffix(file, "resized");
                 image.Resize(geometry);
-                image.Write(destinationPath, MagickFormat.Png);
+                var format = GetFormatForPath(destinationPath);
+                image.Write(destinationPath, format);
                 Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} ({targetWidth}x{targetHeight}).");
             }
             catch (Exception ex)
@@ -136,7 +139,90 @@ internal sealed class ImageOperations
             }
         }
 
-        Console.WriteLine("Resize finished for all PNG files.");
+        Console.WriteLine("Resize finished for all PNG/JPG files.");
+    }
+
+    public void ResizeAndWatermark(int targetWidth, int targetHeight, string watermarkPath)
+    {
+        if (!File.Exists(watermarkPath))
+        {
+            Console.WriteLine($"Watermark file {Path.GetFileName(watermarkPath)} was not found. Nothing to do.");
+            return;
+        }
+
+        var files = GetSupportedImageFiles();
+        if (files.Count == 0)
+        {
+            Console.WriteLine("No PNG/JPG files were found in /images.");
+            return;
+        }
+
+        var watermarkFileName = Path.GetFileName(watermarkPath);
+        Console.WriteLine($"Found {files.Count} PNG/JPG file(s) in /images. Preparing watermark {watermarkFileName}...");
+
+        MagickImage watermark;
+        try
+        {
+            watermark = new MagickImage(watermarkPath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load watermark {watermarkFileName}: {ex.Message}");
+            return;
+        }
+
+        using (watermark)
+        {
+            var total = files.Count;
+            for (var index = 0; index < total; index++)
+            {
+                var file = files[index];
+                var progress = FormatProgress(index + 1, total);
+                var fileName = Path.GetFileName(file);
+
+                try
+                {
+                    using var image = new MagickImage(file);
+                    var geometry = new MagickGeometry(targetWidth, targetHeight)
+                    {
+                        IgnoreAspectRatio = true
+                    };
+                    image.Resize(geometry);
+
+                    using var preparedWatermark = PrepareWatermarkFor(image, watermark);
+                    var offsetX = Math.Max(0, image.Width - preparedWatermark.Width);
+                    var offsetY = Math.Max(0, image.Height - preparedWatermark.Height);
+                    image.Composite(preparedWatermark, offsetX, offsetY, CompositeOperator.Over);
+
+                    var destinationPath = AppendOperationSuffix(file, "watermarked");
+                    var format = GetFormatForPath(destinationPath);
+                    image.Write(destinationPath, format);
+                    Console.WriteLine($"{progress} Saved {Path.GetFileName(destinationPath)} ({targetWidth}x{targetHeight}, watermark: {watermarkFileName}).");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"{progress} Failed to watermark {fileName}: {ex.Message}");
+                }
+            }
+
+            Console.WriteLine("Resize + watermark finished for all PNG/JPG files.");
+        }
+    }
+
+    private static IMagickImage<ushort> PrepareWatermarkFor(IMagickImage<ushort> baseImage, IMagickImage<ushort> watermark)
+    {
+        var clone = watermark.Clone();
+        if (clone.Width <= baseImage.Width && clone.Height <= baseImage.Height)
+        {
+            return clone;
+        }
+
+        var geometry = new MagickGeometry(baseImage.Width, baseImage.Height)
+        {
+            IgnoreAspectRatio = false
+        };
+        clone.Resize(geometry);
+        return clone;
     }
 
     private static List<string> GetFiles(string searchPattern)
@@ -145,6 +231,33 @@ internal sealed class ImageOperations
         return Directory.EnumerateFiles(imagesDirectory, searchPattern, SearchOption.TopDirectoryOnly)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static List<string> GetSupportedImageFiles()
+    {
+        var imagesDirectory = GetImagesDirectory();
+        return SupportedImagePatterns
+            .SelectMany(pattern => Directory.EnumerateFiles(imagesDirectory, pattern, SearchOption.TopDirectoryOnly))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static MagickFormat GetFormatForPath(string path)
+    {
+        var extension = Path.GetExtension(path);
+        if (string.IsNullOrEmpty(extension))
+        {
+            return MagickFormat.Png;
+        }
+
+        return extension.ToLowerInvariant() switch
+        {
+            ".png" => MagickFormat.Png,
+            ".jpg" => MagickFormat.Jpeg,
+            ".jpeg" => MagickFormat.Jpeg,
+            _ => MagickFormat.Png
+        };
     }
 
     private static string FormatProgress(int current, int total) => $"[{current}/{total}]";
